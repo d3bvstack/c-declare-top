@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Script to parse .c files and add function declarations at the top
-# Created: April 13, 2025
 
 process_file() {
     local file="$1"
