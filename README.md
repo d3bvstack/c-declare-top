@@ -113,7 +113,3 @@ int calculate_sum(int a, int b) {
 ## License
 
 See the [LICENSE](LICENSE) file for details.
-
-## Created
-
-April 13, 2025
