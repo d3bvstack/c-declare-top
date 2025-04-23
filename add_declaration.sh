@@ -10,22 +10,65 @@ process_file() {
     temp_file=$(mktemp)
     declarations_file=$(mktemp)
     
-    # Use awk to extract function signatures more reliably
-    # This will find lines that match function definitions and aren't followed by a semicolon
+    # Use a more reliable C parsing approach with a state machine logic
     awk '
-    # Match potential function definitions (return type, name, parameters)
-    /^[a-zA-Z0-9_* \t]+[a-zA-Z0-9_*]+\s*\([^;{]*\)(\s*|(\s*\/\*.*\*\/\s*))$/ { 
-        # Store the line
-        line = $0;
-        # Get the next line to check if its a function body
-        getline;
-        # If the next line has an opening brace, its a function definition
-        if ($0 ~ /\s*{/) {
-            # Remove trailing comments or whitespace from the signature
-            gsub(/\/\*.*\*\//, "", line);
-            gsub(/\s+$/, "", line);
-            # Print the clean signature
-            print line;
+    BEGIN {
+        in_function = 0;
+        brace_count = 0;
+        signature = "";
+    }
+    
+    # Function signature detection (not inside another function)
+    /^[a-zA-Z0-9_* \t]+(static\s+)?[a-zA-Z0-9_*]+\s*\([^)]*\)(\s*|\s*\/\*.*\*\/\s*)$/ {
+        if (brace_count == 0 && !in_function) {
+            signature = $0;
+            gsub(/\/\*.*\*\//, "", signature); # Remove comments
+            gsub(/\s+$/, "", signature);       # Remove trailing whitespace
+            in_function = 1;
+            next;
+        }
+    }
+    
+    # Opening braces increase the counter
+    /\{/ {
+        if (in_function && brace_count == 0) {
+            # First opening brace after signature confirms its a function
+            print signature;
+            brace_count++;
+        } else {
+            # Count braces within functions to track nesting
+            for (i = 1; i <= length($0); i++) {
+                char = substr($0, i, 1);
+                if (char == "{") brace_count++;
+                if (char == "}") brace_count--;
+            }
+        }
+        next;
+    }
+    
+    # Closing braces decrease the counter
+    /\}/ {
+        for (i = 1; i <= length($0); i++) {
+            char = substr($0, i, 1);
+            if (char == "{") brace_count++;
+            if (char == "}") brace_count--;
+        }
+        
+        # When we reach brace_count 0, we exit the function
+        if (brace_count == 0) {
+            in_function = 0;
+        }
+        next;
+    }
+    
+    # Count braces in any line
+    {
+        if (in_function) {
+            for (i = 1; i <= length($0); i++) {
+                char = substr($0, i, 1);
+                if (char == "{") brace_count++;
+                if (char == "}") brace_count--;
+            }
         }
     }
     ' "$file" > "$temp_file"
@@ -40,8 +83,14 @@ process_file() {
     # Process each function definition and create declarations
     declarations=""
     while IFS= read -r line; do
+        # Skip empty lines
+        if [ -z "$line" ]; then
+            continue
+        fi
+        
         # Add semicolon at end to make it a declaration
         declaration="$line;"
+        
         # Add newlines between declarations
         if [ -z "$declarations" ]; then
             declarations="$declaration"
@@ -59,7 +108,7 @@ process_file() {
         awk '
         BEGIN { printing = 1; }
         /\/\* Function declarations \*\// { printing = 0; }
-        /^[a-zA-Z0-9_* \t]+[a-zA-Z0-9_*]+\s*\([^;]*\);$/ { if (printing == 0) next; }
+        /^[a-zA-Z0-9_* \t]+(static\s+)?[a-zA-Z0-9_*]+\s*\([^;]*\);$/ { if (printing == 0) next; }
         /^$/ { if (printing == 0) { printing = 1; next; } }
         { if (printing) print; }
         ' "$file" > "$declarations_file"
