@@ -2,6 +2,10 @@
 
 A bash script that automatically parses C files, extracts function definitions, and adds their declarations at the top of the file. This helps maintain proper function prototypes in C codebases and avoid implicit declarations.
 
+## Introduction
+
+The `add_declaration.sh` script is designed to help C developers maintain clean and organized code by automatically generating function declarations for their C files. This script simplifies the process of managing function prototypes and ensures that all necessary declarations are present at the top of the file.
+
 ## Purpose
 
 The `add_declaration.sh` script helps C developers maintain clean code by:
@@ -9,6 +13,14 @@ The `add_declaration.sh` script helps C developers maintain clean code by:
 - Creating appropriate function declarations (prototypes)
 - Adding these declarations at the top of the file in an organized manner
 - Avoiding duplicate declarations by managing existing declaration sections
+
+## Features
+
+- Parses C files to extract function definitions
+- Generates function declarations and adds them to the top of the file
+- Handles multiple function formatting styles
+- Manages existing declaration sections to avoid duplicates
+- Creates backup files before making changes
 
 ## Installation
 
